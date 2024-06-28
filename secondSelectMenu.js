@@ -1,3 +1,51 @@
+#set($menuId = $ContentIdentifier)
+#set($thisMenuWidget = $dotcontent.find($ContentIdentifier))
+#set($uniqueStates = [])
+
+
+## $thisMenuWidget.optionData
+    
+#foreach($person in $thisMenuWidget.optionData.keySet())
+    #foreach($stateObject in $thisMenuWidget.optionData.get($person).keySet())
+        #if(!$uniqueStates.contains($stateObject))
+            #set($dummy = $uniqueStates.add($stateObject))
+        #end
+    #end
+#end
+
+<select class="base-menu" id="a-${menuId}">
+    <option value="">--Filter By State--</option>
+    #foreach($state in $uniqueStates)
+    <option value="$state.toLowerCase()">$state</option>
+    #end
+</select>
+
+
+
+
+
+
+#set($meetTheAdmissionsTeam = $dotcontent.find($dotContentMap.displayedContent.identifier))
+ #set($d = $meetTheAdmissionsTeam.departmentLister.selectedValues)
+#foreach($dept in $d )
+    #set($departmentLister = $departmentLister+",$dept")
+#end
+
+#dotParse("${dotTheme.path}velocity/widgets/staff-widget.vtl")
+
+
+<script>
+var facultyMembers = Array.from(document.getElementsByClassName("faculty-member"));
+facultyMembers.forEach(function(element){
+    element.style.display = "none";
+})
+var statesArray = [];
+
+function StateObject(name,counties){
+    this.name = name;
+    this.counties = counties;
+}
+
 document.addEventListener("change",function(event){
     
     if(event.target.id == "a-${menuId}"){
@@ -44,7 +92,12 @@ document.addEventListener("change",function(event){
                         firstSelectMenu.insertAdjacentElement("afterend",secondSelectMenu);                        
                     }
                     else {
-                        console.log("The second select menu already exist");
+                        console.log("the menu already exist");
+                        for(var county of item.counties){
+                            optionsHtml += `<option value="${county.toLowerCase()}">${county}</option>`;
+                        }
+                        console.log(secondSelectMenu);
+                        secondSelectMenu.insertAdjacentHTML("beforeend",optionsHtml);
                     }
 
                 } else {
@@ -55,3 +108,54 @@ document.addEventListener("change",function(event){
         }
     } 
 });
+
+function addUniqueState(stateObject){
+    const existingState = statesArray.find(state => state.name == stateObject.name)
+    if(existingState){
+        for(const county of stateObject.counties){
+            existingState.counties.push(county);
+        }
+    } else {
+        statesArray.push(stateObject);
+    }
+}
+
+function dotCMSStringToJSON(inputString) {
+
+let jsonString = inputString.replace(/=/g, ':');
+
+
+jsonString = jsonString.replace(/({|}|,\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+
+
+jsonString = jsonString.replace(/(\w+)(:\[)/g, '"$1"$2');
+
+
+jsonString = jsonString.replace(/(\[|\s*)([\w\s]+)(\s*\]|,\s*)/g, '$1"$2"$3');
+
+
+    try {
+        let jsonObject = JSON.parse(jsonString);
+        return jsonObject;
+        } 
+    catch (error) {
+        console.error('Error parsing JSON:', error);
+        return null; 
+        }
+}
+</script>
+
+
+
+
+
+
+
+## <select class="base-menu" id="b-${menuId}" style="display:none">
+##     <option value="">--Filter By County--</option>
+## </select>
+
+## $thisMenuWidget.optionData.get($person).get($stateObject)
+## <span style="color:red;">$stateObject</span> The state
+        ## <span style="color:blue;"> 
+        ##     $thisMenuWidget.optionData.get($person).get($stateObject)</span> the counties array

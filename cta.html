@@ -1,0 +1,38 @@
+<style>
+.coeCard{
+    display:flex;
+    flex-direction:column;
+    gap:1.5em;
+}
+.coeCard img {
+    padding-bottom:1em;
+}
+
+
+@media(min-width:830px){
+    .coeCard {
+        flex-direction:${imagePositon};
+        padding-bottom:initial;
+    }
+}
+</style>
+
+<div class="coeCard">
+        #if($image != "")
+        <div style="flex-basis:50%;">
+            <img src="$callToAction.image.shortyUrl" alt="$imageAlternativeText" />
+        </div>
+        #else
+        <div style="flex-basis:50%;display:flex;justify-content:center">
+            <span class="$graphic" style="font-size:12em;display:flex;"></span>
+        </div>
+        #end
+    
+    <div style="flex-basis:50%">
+        <h2 class="thin" style="margin-top:initial;font-size:2.2222222222em;">$heading</h2>
+        <p>$paragraphText</p>
+        #if($buttonText != "" && $buttonLink != "" )
+        <a href="$buttonLink" target="_blank" rel="noopener" class="btn">$buttonText</a>
+        #end
+    </div>
+</div>

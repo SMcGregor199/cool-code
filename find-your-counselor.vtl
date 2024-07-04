@@ -1,0 +1,249 @@
+#set($menuId = $ContentIdentifier)
+#set($thisMenuWidget = $dotcontent.find($ContentIdentifier))
+#set($uniqueStates = [])
+
+
+
+    
+#foreach($person in $thisMenuWidget.optionData.keySet())
+    #foreach($state in $thisMenuWidget.optionData.get($person).keySet())
+        #if(!$uniqueStates.contains($state))
+            #set($dummy = $uniqueStates.add($state))
+        #end
+    #end
+#end
+
+
+
+<select class="base-menu" id="a-${menuId}">
+    <option value="">--Filter By State--</option>
+    #foreach($state in $sorter.sort($uniqueStates))
+    <option value="$state.toLowerCase()">$state</option>
+    #end
+</select>
+
+
+
+
+
+
+#set($meetTheAdmissionsTeam = $dotcontent.find($dotContentMap.displayedContent.identifier))
+ #set($d = $meetTheAdmissionsTeam.departmentLister.selectedValues)
+#foreach($dept in $d )
+    #set($departmentLister = $departmentLister+",$dept")
+#end
+
+#dotParse("${dotTheme.path}velocity/widgets/staff-widget.vtl")
+
+
+<script>
+//First We're turning off all staff widgets on the page. 
+var facultyMembers = Array.from(document.getElementsByClassName("faculty-member"));
+turnCounselorsOff(facultyMembers);
+
+/* 
+*Here we're creating an empty array, which will house all our states and their respective counties.
+*This will serve as our main loop. 
+*/
+var statesArray = [];
+
+//Here we're capturing the JSON used above and making it JavaScript useable. 
+var jsonObject;
+jsonObject = dotCMSStringToJSON('$thisMenuWidget.optionData');
+
+// looping through the JSON to create a new usable list and store it in statesArray
+for(var personId in jsonObject){
+    var personData = jsonObject[personId];
+    for (var state in personData){
+        var counties = personData[state];
+        var stateObject = new StateObject(state,personData[state]);
+        addUniqueState(stateObject);
+    }
+}
+
+//it's an array of objects, but because it's objects. I need to use the for...of loop
+//statesArray looks good. 
+// for(var o of statesArray){
+//     console.log(o.name + ":" + o.counties);
+// }
+
+//Relevant Second Select Menu Data. For use in the event listener.
+var secondSelectMenu = document.createElement("select");
+secondSelectMenu.classList.add("base-menu");
+secondSelectMenu.setAttribute("id","b-${menuId}");
+
+
+var optionsHtml;
+
+
+document.addEventListener("change",function(event){
+    if(event.target.id == "a-${menuId}"){
+        var secondSelectMenuChecker = document.querySelector("#b-${menuId}");
+        //Relevant First Select Menu Data. For use in event lsitener
+        var firstSelectMenu = document.getElementById("a-${menuId}");
+        var filterByState = document.getElementById("a-${menuId}").value.toLowerCase();
+        // Logic that determines the options of the select menu
+        for(item of statesArray){
+            
+            
+            // if there's a match continue (there should always be a match)
+            if(item.name.toLowerCase() == filterByState){
+                // If the state has a real array of counties continue
+                if(item.counties[0] != "Entire State" ){
+                    // if the second select menu doesn't already exist
+                    if(!secondSelectMenuChecker){
+                        turnCounselorsOff(facultyMembers);
+                        optionsHtml = `<option value="">--Filter By County--</option>`;
+                    // loop through the list of counties and store it in optionsHtml    
+                        for(var county of item.counties){
+                            optionsHtml += `<option value="${county.toLowerCase()}">${county}</option>`;
+                        }
+                        // insert options into second select menu
+                        secondSelectMenu.insertAdjacentHTML("beforeend",optionsHtml);
+                        // add second select menu to web page
+                        firstSelectMenu.insertAdjacentElement("afterend",secondSelectMenu);                        
+                    }
+                    // the second selct menu does appear what happens..
+                    else {
+                        console.log("the second menu is here");
+                        turnCounselorsOff(facultyMembers);
+                        if(secondSelectMenuChecker.style.display == "none"){
+                            secondSelectMenuChecker.style.display = "inline-block";
+                        }
+                        secondSelectMenu.innerHTML = " ";
+                        optionsHtml = `<option value="">--Filter By County--</option>`;
+                        for(var county of item.counties){
+                            optionsHtml += `<option value="${county.toLowerCase()}">${county}</option>`;
+                        }
+                        
+
+                        secondSelectMenu.insertAdjacentHTML("beforeend",optionsHtml);
+                    }
+
+                } else {
+                    if(!secondSelectMenuChecker){
+                        turnCounselorsOff(facultyMembers);
+                        doCounselorSearchByState(filterByState);
+                        
+                        
+                    }
+                    else{
+                        secondSelectMenuChecker.style.display = "none";
+                        turnCounselorsOff(facultyMembers);
+                        doCounselorSearchByState(filterByState);
+                    }
+                   
+                    
+                }
+            }
+
+        }
+    } else if (event.target.id == "b-${menuId}"){
+        var filterByCounty = secondSelectMenu.value.toLowerCase();
+        turnCounselorsOff(facultyMembers);
+        doCounselorSearchByCounty(filterByCounty)
+    }
+});
+
+
+
+function addUniqueState(stateObject){
+    const existingState = statesArray.find(state => state.name == stateObject.name)
+    if(existingState){
+        for(const county of stateObject.counties){
+            existingState.counties.push(county);
+        }
+    } else {
+        statesArray.push(stateObject);
+    }
+}
+
+function dotCMSStringToJSON(inputString) {
+let jsonString = inputString.replace(/=/g, ':');
+jsonString = jsonString.replace(/({|}|,\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+jsonString = jsonString.replace(/(\w+)(:\[)/g, '"$1"$2');
+jsonString = jsonString.replace(/(\[|\s*)([\w\s]+)(\s*\]|,\s*)/g, '$1"$2"$3');
+    try {
+        let jsonObject = JSON.parse(jsonString);
+        return jsonObject;
+        } 
+    catch (error) {
+        console.error('Error parsing JSON:', error);
+        return null; 
+        }
+}
+
+function doCounselorSearchByState(filterByState) {
+    var userInput = filterByState;
+    // personId is name
+    for(var personId in jsonObject){
+        //personData is the state JSON object it points to
+        var personData = jsonObject[personId];
+        for (var state in personData){
+            if(state.toLowerCase() == userInput){
+                console.log(personId);
+                var counselors = document.querySelectorAll("div[onclick]");
+                for (const div of counselors){
+                    const clickEvent = div.getAttribute("onclick");
+                    const startIndex = clickEvent.indexOf("id=") + 3;
+                    const endIndex = clickEvent.indexOf("@");
+                    const name = clickEvent.substring(startIndex, endIndex);
+                    // console.log("Extracted name from this div is " + name);
+                    if(name == personId){
+                        div.style.display = "block";
+                    } else {
+                        div.style.display = "none";
+                    }
+                    
+                }
+                
+            }
+        }
+    }
+    
+    
+    
+}
+
+function doCounselorSearchByCounty(filterByCounty) {
+    var userInput = filterByCounty;
+    // personId is name
+    for(var personId in jsonObject){
+        //personData is the state JSON object it points to
+        var personData = jsonObject[personId];
+        for (var state in personData){
+            var counties = personData[state];
+            for (var county of counties){
+                if(county.toLowerCase() == userInput ){
+                    console.log(personId);
+                    var counselors = document.querySelectorAll("div[onclick]");
+                    for (const div of counselors){
+                        const clickEvent = div.getAttribute("onclick");
+                        const startIndex = clickEvent.indexOf("id=") + 3;
+                        const endIndex = clickEvent.indexOf("@");
+                        const name = clickEvent.substring(startIndex, endIndex);
+                        // console.log("Extracted name from this div is " + name);
+                        if(name == personId){
+                            div.style.display = "block";
+                        } else {
+                            div.style.display = "none";
+                        }
+                        
+                    }                    
+                }
+            }
+                
+            
+        }
+    }    
+}
+function turnCounselorsOff(array){
+    array.forEach(function(element){
+    element.style.display = "none";
+})
+}
+function StateObject(name,counties){
+    this.name = name;
+    this.counties = counties;
+}
+</script>
